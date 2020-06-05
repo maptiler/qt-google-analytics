@@ -194,7 +194,7 @@ QString GAnalytics::Private::getUserAgent()
     QString locale = QLocale::system().name();
     QString system = getSystemInfo();
 
-    return QString("%1/%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    return QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
 }
 
 
@@ -465,7 +465,7 @@ void GAnalytics::Private::setUserID(const QString &userID)
  * @return userID         A string with the user id.
  */
 QString GAnalytics::Private::getUserID()
-{    
+{
     QSettings settings;
     QString userID = settings.value("GAnalytics-uid", QString("")).toString();
 
