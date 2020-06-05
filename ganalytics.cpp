@@ -59,6 +59,7 @@ public:
     QString language;
     QString screenResolution;
     QString viewportSize;
+    bool onlinePosting;
 
     bool isSending;
 
@@ -112,11 +113,12 @@ GAnalytics::Private::Private(GAnalytics *parent)
     screenResolution = getScreenResolution();
 #endif // QT_GUI_LIB
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    appName = QCoreApplication::instance()->applicationName();
-    appVersion = QCoreApplication::instance()->applicationVersion();
+    appName = "";
+    appVersion = "";
+    onlinePosting = false;
     request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
     connect(this, SIGNAL(postNextMessage()), this, SLOT(postMessage()));
-    timer.start(30000);
+    timer.start(10000);
     connect(&timer, SIGNAL(timeout()), this, SLOT(postMessage()));
 }
 
@@ -192,7 +194,7 @@ QString GAnalytics::Private::getUserAgent()
     QString locale = QLocale::system().name();
     QString system = getSystemInfo();
 
-    return QString("%1/%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    return QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
 }
 
 
@@ -648,6 +650,16 @@ int GAnalytics::sendInterval() const
     return (d->timer.interval());
 }
 
+void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion) {
+    d->appName = appName;
+    d->appVersion = appVersion;
+    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent());
+}
+
+void GAnalytics::setOnlinePosting(bool onlinePosting) const {
+    d->onlinePosting = onlinePosting;
+}
+
 void GAnalytics::startSending()
 {
     if (!isSending())
@@ -856,8 +868,21 @@ void GAnalytics::Private::postMessage()
         networkManager = new QNetworkAccessManager(this);
     }
 
-    QNetworkReply *reply = networkManager->post(request, ba);
-    connect(reply, SIGNAL(finished()), this, SLOT(postMessageFinished()));
+    if (onlinePosting)
+    {
+        QNetworkReply *reply = networkManager->post(request, ba);
+        connect(reply, SIGNAL(finished()), this, SLOT(postMessageFinished()));
+    }
+    else
+    {
+        qDebug() << "[Analytics message]";
+        qDebug() << ba;
+        for (QByteArray rawForm : request.rawHeaderList()) {
+            qDebug() << rawForm << "=" << request.rawHeader(rawForm);
+        }
+        messageQueue.dequeue();
+        emit postNextMessage();
+    }
 }
 
 /**

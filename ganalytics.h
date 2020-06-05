@@ -61,7 +61,13 @@ public:
     void setSendInterval(int milliseconds);
     int sendInterval() const;
 
+    void generateUserAgent(const QString& appName, const QString& appVersion);
+    void setOnlinePosting(bool onlinePosting) const;
+
     void startSending();
+
+
+
     bool isSending() const;
 
     /// Get or set the network access manager. If none is set, the class creates its own on the first request
