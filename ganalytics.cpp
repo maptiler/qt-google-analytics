@@ -13,6 +13,7 @@
 #include <QTimer>
 #include <QUrlQuery>
 #include <QUuid>
+#include <QProcess>
 
 #ifdef QT_GUI_LIB
 #include <QScreen>
@@ -59,6 +60,9 @@ public:
     QString language;
     QString screenResolution;
     QString viewportSize;
+    QString sysName;
+    QString osName;
+    bool userAct;
     bool onlinePosting;
 
     bool isSending;
@@ -73,7 +77,7 @@ public:
 #ifdef QT_GUI_LIB
     QString getScreenResolution();
 #endif // QT_GUI_LIB
-    QString getUserAgent();
+    QString getUserAgent(QString sysName);
     QString getSystemInfo();
     QList<QString> persistMessageQueue();
     void readMessagesFromFile(const QList<QString> &dataList);
@@ -116,7 +120,7 @@ GAnalytics::Private::Private(GAnalytics *parent)
     appName = QCoreApplication::instance()->applicationName();
     appVersion = QCoreApplication::instance()->applicationVersion();
     onlinePosting = false;
-    request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
+    request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent(sysName));
     connect(this, SIGNAL(postNextMessage()), this, SLOT(postMessage()));
     timer.start(10000);
     connect(&timer, SIGNAL(timeout()), this, SLOT(postMessage()));
@@ -155,6 +159,19 @@ QUrlQuery GAnalytics::Private::buildStandardPostQuery(const QString &type)
     if(!userID.isEmpty())
     {
         query.addQueryItem("uid", userID);
+        query.addQueryItem("cd1", userID);
+    }
+    if (userAct)
+    {
+        query.addQueryItem("cd2", "y");
+    }
+    else
+    {
+        query.addQueryItem("cd2", "n");
+    }
+    if(!sysName.isEmpty())
+    {
+        query.addQueryItem("cd3", sysName);
     }
     query.addQueryItem("t", type);
     query.addQueryItem("ul", language);
@@ -189,12 +206,94 @@ QString GAnalytics::Private::getScreenResolution()
  * All this information will be send in POST messages.
  * @return agent        A QString with all the information formatted for a POST message.
  */
-QString GAnalytics::Private::getUserAgent()
+QString GAnalytics::Private::getUserAgent(QString sysName)
 {
-    QString locale = QLocale::system().name();
+    QString locale = QLocale::system().name().toLower().replace("_", "-");
     QString system = getSystemInfo();
 
-    return QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    QString machine = QString();
+    sysName = sysName.replace("(", "").replace(")", "").replace("/", "-");
+    osName = sysName;
+#ifdef Q_OS_MAC
+    machine = "Macintosh; ";
+    machine += QString("Intel Mac OS X ");
+    switch(QSysInfo::MacintoshVersion)
+    {
+      // 10.2 and lower are not supported!
+      case QSysInfo::MV_10_3: machine += "10_3"; break;
+      case QSysInfo::MV_10_4: machine += "10_4"; break;
+      case QSysInfo::MV_10_5: machine += "10_5"; break;
+      case QSysInfo::MV_10_6: machine += "10_6"; break;
+      case QSysInfo::MV_10_7: machine += "10_7"; break;
+      case QSysInfo::MV_10_8: machine += "10_8"; break;
+      case QSysInfo::MV_10_9: machine += "10_9"; break;
+      case QSysInfo::MV_10_10: machine += "10_10"; break;
+      case QSysInfo::MV_Unknown:
+      default:
+        // Replace our parsed name with dots into UA compatible
+        if (!sysName.isEmpty()) {
+          machine = "Macintosh; Intel " + sysName.replace(".", "_");
+        }
+        else {
+          machine += "unknown";
+        }
+        break;
+    }
+#endif
+#ifdef Q_OS_LINUX
+
+    machine = "X11; ";
+    if (sysName.isEmpty()) {
+      QProcess process;
+      process.start("uname", QStringList() << "-sm");
+      process.waitForFinished(-1); // wait forever until finished
+      QString stdout = process.readAllStandardOutput();
+      machine += stdout.simplified();
+    }
+    else {
+      machine += "Linux ";
+      machine += sysName.replace(" ", "_");
+    }
+#endif
+#ifdef Q_OS_WIN
+    machine = "Windows ";
+    switch(QSysInfo::WindowsVersion)
+    {
+      case QSysInfo::WV_32s: machine += "3.1"; break;
+      case QSysInfo::WV_95: machine += "95"; break;
+      case QSysInfo::WV_98: machine += "98"; break;
+      case QSysInfo::WV_Me: machine += "Me"; break;
+      case QSysInfo::WV_NT: machine += "NT 4.0"; break;
+      case QSysInfo::WV_2000: machine += "NT 5.0"; break;
+      case QSysInfo::WV_XP: machine += "NT 5.1"; break;
+      case QSysInfo::WV_2003: machine += "NT 5.2"; break;
+      case QSysInfo::WV_VISTA: machine += "NT 6.0"; break;
+      case QSysInfo::WV_WINDOWS7: machine += "NT 6.1"; break;
+      case QSysInfo::WV_WINDOWS8: machine += "NT 6.2"; break;
+  #if (QT_VERSION >= QT_VERSION_CHECK(4, 8, 6))
+      case QSysInfo::WV_WINDOWS8_1: machine += "NT 6.3"; break;
+  #endif  // ~ QT Version 4.8.6
+  #if (QT_VERSION >= QT_VERSION_CHECK(4, 8, 7))
+      case QSysInfo::WV_WINDOWS10: machine += "NT 10.0"; break;
+  #endif  // ~ QT Version 4.8.7
+      default:
+        if(QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
+          machine += "NT based";
+    }
+    if(running_on_64_bits_os())
+      machine += "; WOW64";
+#endif
+
+//    QString userAgent = QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    QString userAgent = QString("Mozilla/5.0 (%1; %2; %3) %4 /%5 GAnalytics/1.0 (Qt/ %6)")
+            .arg(machine)
+            .arg(system)
+            .arg(locale)
+            .arg(appName)
+            .arg(appVersion)
+            .arg(QT_VERSION_STR);
+
+    return userAgent;
 }
 
 
@@ -550,11 +649,13 @@ GAnalytics::GAnalytics(QObject *parent)
 {
 }
 
-GAnalytics::GAnalytics(const QString &trackingID, QObject *parent)
+GAnalytics::GAnalytics(const QString &trackingID, QString sysName, bool userAct, QObject *parent)
 : QObject(parent)
 , d(new Private(this))
 {
     setTrackingID(trackingID);
+    d->sysName = sysName;
+    d->userAct = userAct;
 }
 
 /**
@@ -650,10 +751,11 @@ int GAnalytics::sendInterval() const
     return (d->timer.interval());
 }
 
-void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion) {
+void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion, const int userId) {
     d->appName = appName;
     d->appVersion = appVersion;
-    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent());
+    d->setUserID(QString::number(userId));
+    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent(d->sysName));
 }
 
 void GAnalytics::setOnlinePosting(bool onlinePosting) const {
