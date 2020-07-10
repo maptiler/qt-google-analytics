@@ -59,6 +59,7 @@ public:
     QString language;
     QString screenResolution;
     QString viewportSize;
+    QString branchInfo;
     bool onlinePosting;
 
     bool isSending;
@@ -115,6 +116,7 @@ GAnalytics::Private::Private(GAnalytics *parent)
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
     appName = "";
     appVersion = "";
+    branchInfo = QString("%1.%2").arg(BRANCH_NAME).arg(BUILDNUM);
     onlinePosting = false;
     request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
     connect(this, SIGNAL(postNextMessage()), this, SLOT(postMessage()));
@@ -158,6 +160,7 @@ QUrlQuery GAnalytics::Private::buildStandardPostQuery(const QString &type)
     }
     query.addQueryItem("t", type);
     query.addQueryItem("ul", language);
+    query.addQueryItem("av", branchInfo);
 
 #ifdef QT_GUI_LIB
     query.addQueryItem("vp", viewportSize);
