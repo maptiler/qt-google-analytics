@@ -113,8 +113,8 @@ GAnalytics::Private::Private(GAnalytics *parent)
     screenResolution = getScreenResolution();
 #endif // QT_GUI_LIB
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    appName = "";
-    appVersion = "";
+    appName = QCoreApplication::instance()->applicationName();
+    appVersion = QCoreApplication::instance()->applicationVersion();
     onlinePosting = false;
     request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
     connect(this, SIGNAL(postNextMessage()), this, SLOT(postMessage()));
@@ -875,11 +875,13 @@ void GAnalytics::Private::postMessage()
     }
     else
     {
-        qDebug() << "[Analytics message]";
-        qDebug() << ba;
-        for (QByteArray rawForm : request.rawHeaderList()) {
-            qDebug() << rawForm << "=" << request.rawHeader(rawForm);
+        QStringList list;
+        for (QPair<QString, QString> pair : buffer.postQuery.queryItems(QUrl::FullyEncoded)) {
+            list << QString("%1=%2").arg(pair.first).arg(pair.second);
         }
+
+        qDebug() << "GANALYTICS:" << list.join("; ") << request.rawHeader("User-Agent");
+
         messageQueue.dequeue();
         emit postNextMessage();
     }
