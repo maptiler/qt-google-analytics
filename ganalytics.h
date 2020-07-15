@@ -30,7 +30,7 @@ class GAnalytics : public QObject
 
 public:
     explicit GAnalytics(QObject *parent = 0);
-    explicit GAnalytics(const QString &trackingID, QString sysName, bool userAct, QObject *parent = 0);
+    explicit GAnalytics(const QString &trackingID, QObject *parent = 0);
     ~GAnalytics();
 
 public:
@@ -61,7 +61,7 @@ public:
     void setSendInterval(int milliseconds);
     int sendInterval() const;
 
-    void generateUserAgent(const QString& appName, const QString& appVersion, const int userId);
+    void generateUserAgent(const QString &appName = "", const QString &appVersion = "", const QString &sysName = "");
     void setOnlinePosting(bool onlinePosting) const;
 
     void startSending();
