@@ -156,23 +156,7 @@ QUrlQuery GAnalytics::Private::buildStandardPostQuery(const QString &type)
     query.addQueryItem("v", "1");
     query.addQueryItem("tid", trackingID);
     query.addQueryItem("cid", clientID);
-    if(!userID.isEmpty())
-    {
-        query.addQueryItem("uid", userID);
-        query.addQueryItem("cd1", userID);
-    }
-    if (userAct)
-    {
-        query.addQueryItem("cd2", "y");
-    }
-    else
-    {
-        query.addQueryItem("cd2", "n");
-    }
-    if(!sysName.isEmpty())
-    {
-        query.addQueryItem("cd3", sysName);
-    }
+    query.addQueryItem("cd3", sysName);
     query.addQueryItem("t", type);
     query.addQueryItem("ul", language);
 
@@ -649,13 +633,11 @@ GAnalytics::GAnalytics(QObject *parent)
 {
 }
 
-GAnalytics::GAnalytics(const QString &trackingID, QString sysName, bool userAct, QObject *parent)
+GAnalytics::GAnalytics(const QString &trackingID, QObject *parent)
 : QObject(parent)
 , d(new Private(this))
 {
     setTrackingID(trackingID);
-    d->sysName = sysName;
-    d->userAct = userAct;
 }
 
 /**
@@ -751,10 +733,10 @@ int GAnalytics::sendInterval() const
     return (d->timer.interval());
 }
 
-void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion, const int userId) {
+void GAnalytics::generateUserAgent(const QString &appName, const QString &appVersion, const QString &sysName) {
     d->appName = appName;
     d->appVersion = appVersion;
-    d->setUserID(QString::number(userId));
+    d->sysName = sysName;
     d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent(d->sysName));
 }
 
