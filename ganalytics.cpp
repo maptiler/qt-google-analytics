@@ -194,7 +194,7 @@ QString GAnalytics::Private::getUserAgent()
     QString locale = QLocale::system().name();
     QString system = getSystemInfo();
 
-    return QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    return QString("%1/%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
 }
 
 
@@ -879,7 +879,6 @@ void GAnalytics::Private::postMessage()
         for (QPair<QString, QString> pair : buffer.postQuery.queryItems(QUrl::FullyEncoded)) {
             list << QString("%1=%2").arg(pair.first).arg(pair.second);
         }
-
         qDebug() << "GANALYTICS:" << list.join("; ") << request.rawHeader("User-Agent");
 
         messageQueue.dequeue();
