@@ -61,6 +61,9 @@ public:
     void setSendInterval(int milliseconds);
     int sendInterval() const;
 
+    void generateUserAgent(const QString& appName, const QString& appVersion);
+    void setOnlinePosting(bool onlinePosting) const;
+
     void startSending();
     bool isSending() const;
 

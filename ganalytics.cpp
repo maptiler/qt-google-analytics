@@ -59,6 +59,7 @@ public:
     QString language;
     QString screenResolution;
     QString viewportSize;
+    bool onlinePosting;
 
     bool isSending;
 
@@ -114,9 +115,10 @@ GAnalytics::Private::Private(GAnalytics *parent)
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
     appName = QCoreApplication::instance()->applicationName();
     appVersion = QCoreApplication::instance()->applicationVersion();
+    onlinePosting = false;
     request.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
     connect(this, SIGNAL(postNextMessage()), this, SLOT(postMessage()));
-    timer.start(30000);
+    timer.start(10000);
     connect(&timer, SIGNAL(timeout()), this, SLOT(postMessage()));
 }
 
@@ -648,6 +650,16 @@ int GAnalytics::sendInterval() const
     return (d->timer.interval());
 }
 
+void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion) {
+    d->appName = appName;
+    d->appVersion = appVersion;
+    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent());
+}
+
+void GAnalytics::setOnlinePosting(bool onlinePosting) const {
+    d->onlinePosting = onlinePosting;
+}
+
 void GAnalytics::startSending()
 {
     if (!isSending())
@@ -856,8 +868,22 @@ void GAnalytics::Private::postMessage()
         networkManager = new QNetworkAccessManager(this);
     }
 
-    QNetworkReply *reply = networkManager->post(request, ba);
-    connect(reply, SIGNAL(finished()), this, SLOT(postMessageFinished()));
+    if (onlinePosting)
+    {
+        QNetworkReply *reply = networkManager->post(request, ba);
+        connect(reply, SIGNAL(finished()), this, SLOT(postMessageFinished()));
+    }
+    else
+    {
+        QStringList list;
+        for (QPair<QString, QString> pair : buffer.postQuery.queryItems(QUrl::FullyEncoded)) {
+            list << QString("%1=%2").arg(pair.first).arg(pair.second);
+        }
+        qDebug() << "GANALYTICS:" << list.join("; ") << request.rawHeader("User-Agent");
+
+        messageQueue.dequeue();
+        emit postNextMessage();
+    }
 }
 
 /**
