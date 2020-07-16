@@ -156,7 +156,6 @@ QUrlQuery GAnalytics::Private::buildStandardPostQuery(const QString &type)
     query.addQueryItem("v", "1");
     query.addQueryItem("tid", trackingID);
     query.addQueryItem("cid", clientID);
-    query.addQueryItem("cd3", sysName);
     query.addQueryItem("t", type);
     query.addQueryItem("ul", language);
 
@@ -193,89 +192,51 @@ QString GAnalytics::Private::getScreenResolution()
 QString GAnalytics::Private::getUserAgent(QString sysName)
 {
     QString locale = QLocale::system().name().toLower().replace("_", "-");
-    QString system = getSystemInfo();
+    QString system;
 
-    QString machine = QString();
     sysName = sysName.replace("(", "").replace(")", "").replace("/", "-");
     osName = sysName;
-#ifdef Q_OS_MAC
-    machine = "Macintosh; ";
-    machine += QString("Intel Mac OS X ");
-    switch(QSysInfo::MacintoshVersion)
-    {
-      // 10.2 and lower are not supported!
-      case QSysInfo::MV_10_3: machine += "10_3"; break;
-      case QSysInfo::MV_10_4: machine += "10_4"; break;
-      case QSysInfo::MV_10_5: machine += "10_5"; break;
-      case QSysInfo::MV_10_6: machine += "10_6"; break;
-      case QSysInfo::MV_10_7: machine += "10_7"; break;
-      case QSysInfo::MV_10_8: machine += "10_8"; break;
-      case QSysInfo::MV_10_9: machine += "10_9"; break;
-      case QSysInfo::MV_10_10: machine += "10_10"; break;
-      case QSysInfo::MV_Unknown:
-      default:
-        // Replace our parsed name with dots into UA compatible
-        if (!sysName.isEmpty()) {
-          machine = "Macintosh; Intel " + sysName.replace(".", "_");
-        }
-        else {
-          machine += "unknown";
-        }
-        break;
-    }
-#endif
-#ifdef Q_OS_LINUX
 
-    machine = "X11; ";
-    if (sysName.isEmpty()) {
-      QProcess process;
-      process.start("uname", QStringList() << "-sm");
-      process.waitForFinished(-1); // wait forever until finished
-      QString stdout = process.readAllStandardOutput();
-      machine += stdout.simplified();
+#ifdef Q_OS_MAC
+    // Replace our parsed name with dots into UA compatible
+    if (!sysName.isEmpty()) {
+        system = "Macintosh; Intel " + sysName.replace(".", "_");
     }
     else {
-      machine += "Linux ";
-      machine += sysName.replace(" ", "_");
+        system = getSystemInfo();
     }
 #endif
-#ifdef Q_OS_WIN
-    machine = "Windows ";
-    switch(QSysInfo::WindowsVersion)
-    {
-      case QSysInfo::WV_32s: machine += "3.1"; break;
-      case QSysInfo::WV_95: machine += "95"; break;
-      case QSysInfo::WV_98: machine += "98"; break;
-      case QSysInfo::WV_Me: machine += "Me"; break;
-      case QSysInfo::WV_NT: machine += "NT 4.0"; break;
-      case QSysInfo::WV_2000: machine += "NT 5.0"; break;
-      case QSysInfo::WV_XP: machine += "NT 5.1"; break;
-      case QSysInfo::WV_2003: machine += "NT 5.2"; break;
-      case QSysInfo::WV_VISTA: machine += "NT 6.0"; break;
-      case QSysInfo::WV_WINDOWS7: machine += "NT 6.1"; break;
-      case QSysInfo::WV_WINDOWS8: machine += "NT 6.2"; break;
-  #if (QT_VERSION >= QT_VERSION_CHECK(4, 8, 6))
-      case QSysInfo::WV_WINDOWS8_1: machine += "NT 6.3"; break;
-  #endif  // ~ QT Version 4.8.6
-  #if (QT_VERSION >= QT_VERSION_CHECK(4, 8, 7))
-      case QSysInfo::WV_WINDOWS10: machine += "NT 10.0"; break;
-  #endif  // ~ QT Version 4.8.7
-      default:
-        if(QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
-          machine += "NT based";
+
+#ifdef Q_OS_LINUX
+    system = "X11; ";
+    if (!sysName.isEmpty()) {
+        system += "Linux " + sysName.replace(".", "_").replace("\"", "");
     }
-    if(running_on_64_bits_os())
-      machine += "; WOW64";
+    else {
+        system += getSystemInfo();
+    }
+#endif
+
+#ifdef Q_OS_WIN
+    system = getSystemInfo();
 #endif
 
 //    QString userAgent = QString("%1 /%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
-    QString userAgent = QString("Mozilla/5.0 (%1; %2; %3) %4 /%5 GAnalytics/1.0 (Qt/ %6)")
-            .arg(machine)
+    QString userAgent = QString("Mozilla/5.0 (%1; %2) %3/%4 GAnalytics/1.0 (Qt/%5)")
             .arg(system)
             .arg(locale)
             .arg(appName)
             .arg(appVersion)
             .arg(QT_VERSION_STR);
+
+#ifdef Q_OS_WIN32
+    if (!sysName.isEmpty() && sysName.indexOf("build") != -1) {
+    // Parse number from Windows ... (build XXXXX) 64bit
+        int st = sysName.indexOf("build") + 6;
+        int ln = sysName.indexOf(")") - st;
+        userAgent += "Edge/18." + sysName.mid(st, ln);
+    }
+#endif
 
     return userAgent;
 }
