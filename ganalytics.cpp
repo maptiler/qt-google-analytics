@@ -230,10 +230,10 @@ QString GAnalytics::Private::getUserAgent(QString sysName)
 
 #ifdef Q_OS_WIN32
     if (!sysName.isEmpty() && sysName.indexOf("build") != -1) {
-    // Parse number from Windows ... (build XXXXX) 64bit
+        // Parse number from Windows ... (build XXXXX) 64bit
         int st = sysName.indexOf("build") + 6;
         int ln = sysName.indexOf(")") - st;
-        userAgent += "Edge/18." + sysName.mid(st, ln);
+        userAgent += QString(" Edge/18.%1").arg(sysName.mid(st, ln));
     }
 #endif
 
