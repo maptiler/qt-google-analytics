@@ -73,7 +73,7 @@ public:
 #ifdef QT_GUI_LIB
     QString getScreenResolution();
 #endif // QT_GUI_LIB
-    QString getUserAgent();
+    QString getUserAgent(QString sysName = QString());
     QString getSystemInfo();
     QList<QString> persistMessageQueue();
     void readMessagesFromFile(const QList<QString> &dataList);
@@ -189,12 +189,55 @@ QString GAnalytics::Private::getScreenResolution()
  * All this information will be send in POST messages.
  * @return agent        A QString with all the information formatted for a POST message.
  */
-QString GAnalytics::Private::getUserAgent()
+QString GAnalytics::Private::getUserAgent(QString sysName)
 {
-    QString locale = QLocale::system().name();
-    QString system = getSystemInfo();
+    QString locale = QLocale::system().name().toLower().replace("_", "-");
+    QString system;
 
-    return QString("%1/%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    sysName = sysName.remove("(").remove(")").replace("/", "-");
+
+#ifdef Q_OS_MAC
+    // Replace our parsed name with dots into UA compatible
+    if (!sysName.isEmpty()) {
+        system = "Macintosh; Intel " + sysName.replace(".", "_");
+    }
+    else {
+        system = getSystemInfo();
+    }
+#endif
+
+#ifdef Q_OS_LINUX
+    system = "X11; ";
+    if (!sysName.isEmpty()) {
+        system += "Linux " + sysName.replace(" ", "_").remove("\"");
+    }
+    else {
+        system += getSystemInfo();
+    }
+#endif
+
+#ifdef Q_OS_WIN
+    system = getSystemInfo();
+#endif
+
+    // QString userAgent = QString("%1/%2 (%3; %4) GAnalytics/1.0 (Qt/%5)").arg(appName).arg(appVersion).arg(system).arg(locale).arg(QT_VERSION_STR);
+    QString userAgent = QString("Mozilla/5.0 (%1; %2) %3/%4 GAnalytics/1.0 (Qt/%5)")
+            .arg(system)
+            .arg(locale)
+            .arg(appName)
+            .arg(appVersion)
+            .arg(QT_VERSION_STR);
+
+#ifdef Q_OS_WIN32
+    if (!sysName.isEmpty() && sysName.indexOf("build") != -1) {
+        // Parse number from Windows ... (build XXXXX) 64bit
+        int st = sysName.indexOf("build") + 6;
+        int ln = sysName.indexOf(")") - st;
+        userAgent += QString(" Edge/18.%1").arg(sysName.mid(st, ln));
+    }
+#endif
+
+    return userAgent;
 }
 
 
@@ -465,7 +508,7 @@ void GAnalytics::Private::setUserID(const QString &userID)
  * @return userID         A string with the user id.
  */
 QString GAnalytics::Private::getUserID()
-{    
+{
     QSettings settings;
     QString userID = settings.value("GAnalytics-uid", QString("")).toString();
 
@@ -650,10 +693,10 @@ int GAnalytics::sendInterval() const
     return (d->timer.interval());
 }
 
-void GAnalytics::generateUserAgent(const QString& appName, const QString& appVersion) {
+void GAnalytics::generateUserAgent(const QString &appName, const QString &appVersion, const QString &sysName) {
     d->appName = appName;
     d->appVersion = appVersion;
-    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent());
+    d->request.setHeader(QNetworkRequest::UserAgentHeader, d->getUserAgent(sysName));
 }
 
 void GAnalytics::setOnlinePosting(bool onlinePosting) const {
