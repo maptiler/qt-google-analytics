@@ -102,7 +102,7 @@ GAnalytics::Private::Private(GAnalytics *parent)
 : QObject(parent)
 , q(parent)
 , networkManager(NULL)
-, request(QUrl("http://www.google-analytics.com/collect"))
+, request(QUrl("https://www.google-analytics.com/collect"))
 , logLevel(GAnalytics::Error)
 , isSending(false)
 {
